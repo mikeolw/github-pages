@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>거스름돈 시뮬레이션</title>
+    <style>
+        body { 
+            font-family: 'Pretendard', -apple-system, sans-serif; 
+            background-color: #f4f4f9; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        .game-container { 
+            background: #ffffff; 
+            padding: 30px; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            text-align: center; 
+            width: 320px; 
+        }
+        h2 { color: #2c3e50; margin-top: 0; }
+        .info { font-size: 1.1em; margin: 15px 0; color: #7f8c8d; }
+        .amount { font-size: 1.8em; font-weight: bold; color: #2c3e50; }
+        .received-amount { color: #e74c3c; }
+        input { 
+            font-size: 1.3em; 
+            padding: 12px; 
+            width: 80%; 
+            text-align: center; 
+            border: 2px solid #ddd; 
+            border-radius: 10px; 
+            margin-bottom: 15px; 
+            outline: none; 
+            transition: 0.2s; 
+        }
+        input:focus { border-color: #f1c40f; box-shadow: 0 0 8px rgba(241, 196, 15, 0.3); }
+        button { 
+            background: #2c3e50; 
+            color: white; 
+            border: none; 
+            padding: 12px 20px; 
+            font-size: 1.1em; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            width: 80%;
+            transition: 0.2s; 
+            font-weight: bold;
+        }
+        button:hover { background: #1a252f; transform: translateY(-2px); }
+        .feedback { margin-top: 15px; font-weight: bold; font-size: 1.1em; min-height: 26px; }
+        .correct { color: #2ecc71; }
+        .incorrect { color: #e74c3c; }
+        .stats { margin-top: 20px; font-size: 0.9em; color: #95a5a6; }
+        .pattern-badge { 
+            background: #e74c3c; 
+            color: white; 
+            padding: 4px 8px; 
+            border-radius: 12px; 
+            font-size: 0.75em; 
+            vertical-align: middle; 
+            margin-bottom: 5px; 
+            display: inline-block;
+            display: none; 
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h2>☕ 메가커피 포스기 훈련</h2>
+        <div class="info">
+            결제 금액<br>
+            <span class="amount" id="priceDisplay">0</span>원
+        </div>
+        <div class="info">
+            <span id="complexBadge" class="pattern-badge">🔥 실전 심화 패턴</span><br>
+            받은 금액<br>
+            <span class="amount received-amount" id="receivedDisplay">0</span>원
+        </div>
+        
+        <input type="number" id="changeInput" placeholder="거스름돈 입력" onkeypress="handleEnter(event)">
+        <br>
+        <button onclick="checkAnswer()">계산 (Enter)</button>
+        
+        <div id="feedback" class="feedback"></div>
+        <div class="stats">정답: <span id="scoreDisplay" style="color:#2c3e50; font-weight:bold;">0</span> | 도전: <span id="roundDisplay">0</span></div>
+    </div>
+
+    <script>
+        let currentPrice = 0;
+        let currentReceived = 0;
+        let currentChange = 0;
+        let startTime = 0;
+        let score = 0;
+        let rounds = 0;
+        let isWaiting = false;
+
+        function generateProblem() {
+            isWaiting = false;
+            document.getElementById('changeInput').value = '';
+            document.getElementById('feedback').innerHTML = '';
+            
+            // 1,500원 ~ 18,000원 사이 (100원 단위)
+            currentPrice = (Math.floor(Math.random() * 166) + 15) * 100;
+            
+            const isComplex = Math.random() < 0.4; // 40% 확률로 심화 패턴
+            document.getElementById('complexBadge').style.display = isComplex ? 'inline-block' : 'none';
+
+            if (isComplex) {
+                const priceTail = currentPrice % 1000;
+                let baseBills = [5000, 10000, 50000].filter(b => b > currentPrice);
+                if(baseBills.length === 0) baseBills = [(Math.floor(currentPrice/50000)+1)*50000];
+                let baseBill = baseBills[Math.floor(Math.random() * baseBills.length)];
+                
+                if (priceTail === 0) {
+                    currentReceived = baseBill; 
+                    document.getElementById('complexBadge').style.display = 'none';
+                } else if (Math.random() < 0.5 && priceTail > 500) {
+                    // 예: 4800원인데 5300원 내기 (500원 돌려받기)
+                    currentReceived = baseBill + (priceTail - 500);
+                    if (currentReceived - 1000 > currentPrice) currentReceived -= 1000; 
+                } else {
+                    // 예: 4300원인데 5300원 내기 (1000원 돌려받기)
+                    currentReceived = baseBill + priceTail;
+                    if (currentReceived - 1000 > currentPrice) currentReceived -= 1000;
+                }
+            } else {
+                let bills = [1000, 5000, 10000, 50000];
+                let validBills = bills.filter(b => b >= currentPrice);
+                if (validBills.length === 0) {
+                    currentReceived = (Math.floor(currentPrice / 50000) + 1) * 50000;
+                } else {
+                    currentReceived = validBills[Math.floor(Math.random() * validBills.length)];
+                }
+            }
+
+            currentChange = currentReceived - currentPrice;
+            
+            document.getElementById('priceDisplay').innerText = currentPrice.toLocaleString();
+            document.getElementById('receivedDisplay').innerText = currentReceived.toLocaleString();
+            document.getElementById('changeInput').focus();
+            
+            startTime = new Date().getTime();
+        }
+
+        function checkAnswer() {
+            if (isWaiting) return;
+            
+            const inputVal = document.getElementById('changeInput').value;
+            if (!inputVal) return;
+            
+            isWaiting = true;
+            const userAnswer = parseInt(inputVal.replace(/,/g, ''), 10);
+            const feedbackEl = document.getElementById('feedback');
+            const timeTaken = ((new Date().getTime() - startTime) / 1000).toFixed(1);
+
+            rounds++;
+            if (userAnswer === currentChange) {
+                score++;
+                feedbackEl.innerHTML = `<span class="correct">✅ 정답! (${timeTaken}초)</span>`;
+            } else {
+                feedbackEl.innerHTML = `<span class="incorrect">❌ 땡! 정답은 ${currentChange.toLocaleString()}원</span>`;
+            }
+            
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('roundDisplay').innerText = rounds;
+            
+            // 1.5초 후 다음 문제 출제
+            setTimeout(generateProblem, 1500); 
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        }
+
+        // 게임 시작
+        generateProblem();
+    </script>
+</body>
+</html>
